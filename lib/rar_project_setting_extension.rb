@@ -1,4 +1,4 @@
-require_dependency 'projects_helper'
+require 'projects_helper'
 
 module RarProjectSettingExtension
   def project_settings_tabs_with_readme_at_repositories
