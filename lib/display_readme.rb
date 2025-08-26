@@ -32,10 +32,35 @@ class DisplayReadme < Redmine::Hook::ViewListener
 
     formatter_name = ''
     if @@markdown_ext.include?(File.extname(file.path))
-      formatter_name = Redmine::WikiFormatting.format_names.find { |name| name =~ /markdown/i }
+      # Try to find available Markdown formatter in Redmine 6.0
+      available_formats = Redmine::WikiFormatting.format_names
+      formatter_name = available_formats.find { |name| name =~ /markdown/i } ||
+                      available_formats.find { |name| name.downcase.include?('markdown') }
+      
+      # In Redmine 6.0, try common markdown formatter names
+      unless formatter_name
+        ['markdown', 'common_mark', 'redcarpet'].each do |name|
+          begin
+            if Redmine::WikiFormatting.formatter_for(name)
+              formatter_name = name
+              break
+            end
+          rescue
+            next
+          end
+        end
+      end
     end
 
-    formatter = Redmine::WikiFormatting.formatter_for(formatter_name).new(raw_readme_text)
+    # Use default formatter (textile) if no markdown formatter found
+    formatter_name ||= ''
+    
+    begin
+      formatter = Redmine::WikiFormatting.formatter_for(formatter_name).new(raw_readme_text)
+    rescue => e
+      # Fallback to default formatter if there's any error
+      formatter = Redmine::WikiFormatting.formatter_for('').new(raw_readme_text)
+    end
 
     rar_setting = RarProjectSetting.find_by(project_id: context[:project].id)
 
