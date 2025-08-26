@@ -27,6 +27,9 @@ class DisplayReadme < Redmine::Hook::ViewListener
       return ''
     end
 
+    # Force encoding to UTF-8 to prevent ASCII-8BIT/UTF-8 compatibility errors
+    raw_readme_text = raw_readme_text.force_encoding('UTF-8')
+
     formatter_name = ''
     if @@markdown_ext.include?(File.extname(file.path))
       formatter_name = Redmine::WikiFormatting.format_names.find { |name| name =~ /markdown/i }
