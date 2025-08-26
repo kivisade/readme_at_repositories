@@ -27,46 +27,20 @@ class DisplayReadme < Redmine::Hook::ViewListener
       return ''
     end
 
-    # Force encoding to UTF-8 to prevent ASCII-8BIT/UTF-8 compatibility errors
-    raw_readme_text = raw_readme_text.force_encoding('UTF-8')
-
+    # Use Redmine's native approach to render content like in repositories/entry.html.erb
     formatter_name = ''
     if @@markdown_ext.include?(File.extname(file.path))
-      # Try to find available Markdown formatter in Redmine 6.0
-      available_formats = Redmine::WikiFormatting.format_names
-      formatter_name = available_formats.find { |name| name =~ /markdown/i } ||
-                      available_formats.find { |name| name.downcase.include?('markdown') }
-      
-      # In Redmine 6.0, try common markdown formatter names
-      unless formatter_name
-        ['markdown', 'common_mark', 'redcarpet'].each do |name|
-          begin
-            if Redmine::WikiFormatting.formatter_for(name)
-              formatter_name = name
-              break
-            end
-          rescue
-            next
-          end
-        end
-      end
+      formatter_name = 'common_mark'
     end
 
-    # Use default formatter (textile) if no markdown formatter found
-    formatter_name ||= ''
-    
-    begin
-      formatter = Redmine::WikiFormatting.formatter_for(formatter_name).new(raw_readme_text)
-    rescue => e
-      # Fallback to default formatter if there's any error
-      formatter = Redmine::WikiFormatting.formatter_for('').new(raw_readme_text)
-    end
+    # Convert content using Redmine's native WikiFormatting with proper encoding
+    formatted_html = Redmine::WikiFormatting.to_html(formatter_name, Redmine::CodesetUtil.to_utf8_by_setting(raw_readme_text))
 
     rar_setting = RarProjectSetting.find_by(project_id: context[:project].id)
 
     context[:controller].send(:render_to_string, {
       :partial => 'repository/readme',
-      :locals => {:html => formatter.to_html, position: rar_setting[:position], show: rar_setting[:show] }
+      :locals => {:html => formatted_html, position: rar_setting[:position], show: rar_setting[:show] }
     })
   end
 end
